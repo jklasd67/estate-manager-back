@@ -1,0 +1,1024 @@
+openapi: 3.1.0
+info:
+  title: Real Estate Listings Management API
+  version: 1.0.0
+  summary: RESTful API for managing listings, images, and inquiries
+  description: |
+    This API follows resource-oriented REST constraints aligned with Roy Fielding's principles:
+    - Resource-based URIs
+    - Uniform interface via standard HTTP methods and semantics
+    - Stateless requests
+    - Cache-aware responses where appropriate
+    - Hypermedia links in representations
+
+    Core resources:
+    - objects: real estate listing objects
+    - images: listing images
+    - inquiries: customer inquiries related to listings
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: https://sandbox.api.example.com/v1
+    description: Sandbox
+
+tags:
+  - name: Objects
+    description: Listing object resources
+  - name: Images
+    description: Image resources belonging to listing objects
+  - name: Inquiries
+    description: Inquiry resources tied to listing objects
+
+security:
+  - bearerAuth: []
+
+paths:
+  /objects:
+    get:
+      tags: [Objects]
+      summary: List objects
+      description: Returns a paginated collection of listing objects.
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+        - name: status
+          in: query
+          description: Filter by publication status
+          schema:
+            $ref: '#/components/schemas/ObjectStatus'
+        - name: city
+          in: query
+          description: Filter by city
+          schema:
+            type: string
+            maxLength: 100
+        - name: minPrice
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: maxPrice
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: rooms
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: areaMin
+          in: query
+          schema:
+            type: number
+            format: float
+            minimum: 0
+        - name: areaMax
+          in: query
+          schema:
+            type: number
+            format: float
+            minimum: 0
+      responses:
+        '200':
+          description: Paged object collection
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              example: private, max-age=60
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectCollection'
+              examples:
+                sample:
+                  value:
+                    data:
+                      - id: obj_01J6R5R2P3Q9B6N12D5A1K3V9M
+                        title: 3-room apartment in city center
+                        description: Bright apartment near old town.
+                        status: published
+                        listingType: sale
+                        propertyType: apartment
+                        city: Tallinn
+                        addressLine1: Example 12
+                        postalCode: '10111'
+                        price:
+                          amount: 235000
+                          currency: EUR
+                        rooms: 3
+                        areaM2: 72.4
+                        createdAt: '2026-04-20T10:11:12Z'
+                        updatedAt: '2026-04-22T09:00:00Z'
+                        _links:
+                          self:
+                            href: /v1/objects/obj_01J6R5R2P3Q9B6N12D5A1K3V9M
+                          images:
+                            href: /v1/objects/obj_01J6R5R2P3Q9B6N12D5A1K3V9M/images
+                          inquiries:
+                            href: /v1/objects/obj_01J6R5R2P3Q9B6N12D5A1K3V9M/inquiries
+                    pagination:
+                      page: 1
+                      pageSize: 20
+                      totalItems: 1
+                      totalPages: 1
+                    _links:
+                      self:
+                        href: /v1/objects?page=1&pageSize=20
+                      next:
+                        href: null
+                      prev:
+                        href: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Objects]
+      summary: Create object
+      description: Creates a new listing object resource.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObjectCreate'
+      responses:
+        '201':
+          description: Object created
+          headers:
+            Location:
+              description: URI of created object
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /objects/{objectId}:
+    parameters:
+      - $ref: '#/components/parameters/ObjectId'
+    get:
+      tags: [Objects]
+      summary: Get object
+      description: Returns one listing object.
+      responses:
+        '200':
+          description: Object resource
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Strong entity tag for optimistic concurrency
+              example: '"obj-v5"'
+            Cache-Control:
+              schema:
+                type: string
+              example: private, max-age=30
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Objects]
+      summary: Partially update object
+      description: Applies partial modifications to a listing object.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/ObjectUpdate'
+      responses:
+        '200':
+          description: Updated object
+          headers:
+            ETag:
+              schema:
+                type: string
+              example: '"obj-v6"'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [Objects]
+      summary: Delete object
+      description: Deletes a listing object and its subordinate resources.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Object deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+
+  /objects/{objectId}/images:
+    parameters:
+      - $ref: '#/components/parameters/ObjectId'
+    get:
+      tags: [Images]
+      summary: List object images
+      description: Returns image resources for one object.
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paged image collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageCollection'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Images]
+      summary: Create image metadata
+      description: |
+        Creates an image metadata resource for an object.
+        Binary upload itself can be handled via returned upload URL or separate media endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageCreate'
+      responses:
+        '201':
+          description: Image metadata created
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /objects/{objectId}/images/{imageId}:
+    parameters:
+      - $ref: '#/components/parameters/ObjectId'
+      - $ref: '#/components/parameters/ImageId'
+    get:
+      tags: [Images]
+      summary: Get image metadata
+      responses:
+        '200':
+          description: Image resource
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Images]
+      summary: Update image metadata
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/ImageUpdate'
+      responses:
+        '200':
+          description: Updated image resource
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [Images]
+      summary: Delete image
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Image deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+
+  /objects/{objectId}/inquiries:
+    parameters:
+      - $ref: '#/components/parameters/ObjectId'
+    get:
+      tags: [Inquiries]
+      summary: List inquiries for object
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/InquiryStatus'
+      responses:
+        '200':
+          description: Paged inquiry collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryCollection'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Inquiries]
+      summary: Create inquiry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InquiryCreate'
+      responses:
+        '201':
+          description: Inquiry created
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /objects/{objectId}/inquiries/{inquiryId}:
+    parameters:
+      - $ref: '#/components/parameters/ObjectId'
+      - $ref: '#/components/parameters/InquiryId'
+    get:
+      tags: [Inquiries]
+      summary: Get inquiry
+      responses:
+        '200':
+          description: Inquiry resource
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Inquiries]
+      summary: Partially update inquiry
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/InquiryUpdate'
+      responses:
+        '200':
+          description: Updated inquiry resource
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [Inquiries]
+      summary: Delete inquiry
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Inquiry deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ObjectId:
+      name: objectId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^obj_[A-Za-z0-9]{20,}$'
+    ImageId:
+      name: imageId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^img_[A-Za-z0-9]{20,}$'
+    InquiryId:
+      name: inquiryId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^inq_[A-Za-z0-9]{20,}$'
+    PageNumber:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Sort:
+      name: sort
+      in: query
+      description: Comma-separated fields, prefix with '-' for descending.
+      schema:
+        type: string
+        example: -createdAt,price.amount
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Required for state-changing operations to prevent lost updates.
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 200
+      description: Optional idempotency key for safe retry of POST requests.
+
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    PreconditionFailed:
+      description: ETag mismatch
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    UnprocessableEntity:
+      description: Semantic validation errors
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ValidationProblemDetails'
+
+  schemas:
+    ObjectStatus:
+      type: string
+      enum: [draft, published, archived]
+
+    InquiryStatus:
+      type: string
+      enum: [new, in_progress, answered, closed, spam]
+
+    ListingType:
+      type: string
+      enum: [sale, rent]
+
+    PropertyType:
+      type: string
+      enum: [apartment, house, land, office, retail, warehouse, other]
+
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          pattern: '^[A-Z]{3}$'
+
+    Link:
+      type: object
+      required: [href]
+      properties:
+        href:
+          type: string
+          format: uri-reference
+
+    ObjectLinks:
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/Link'
+        images:
+          $ref: '#/components/schemas/Link'
+        inquiries:
+          $ref: '#/components/schemas/Link'
+
+    ImageLinks:
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/Link'
+        object:
+          $ref: '#/components/schemas/Link'
+
+    InquiryLinks:
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/Link'
+        object:
+          $ref: '#/components/schemas/Link'
+
+    ObjectResource:
+      type: object
+      required:
+        [
+          id,
+          title,
+          status,
+          listingType,
+          propertyType,
+          city,
+          price,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: string
+          pattern: '^obj_[A-Za-z0-9]{20,}$'
+        title:
+          type: string
+          minLength: 3
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 10000
+        status:
+          $ref: '#/components/schemas/ObjectStatus'
+        listingType:
+          $ref: '#/components/schemas/ListingType'
+        propertyType:
+          $ref: '#/components/schemas/PropertyType'
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        addressLine1:
+          type: string
+          maxLength: 200
+        postalCode:
+          type: string
+          maxLength: 20
+        price:
+          $ref: '#/components/schemas/Money'
+        rooms:
+          type: integer
+          minimum: 0
+        areaM2:
+          type: number
+          format: float
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        _links:
+          $ref: '#/components/schemas/ObjectLinks'
+
+    ObjectCreate:
+      type: object
+      required: [title, listingType, propertyType, city, price]
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 10000
+        listingType:
+          $ref: '#/components/schemas/ListingType'
+        propertyType:
+          $ref: '#/components/schemas/PropertyType'
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        addressLine1:
+          type: string
+          maxLength: 200
+        postalCode:
+          type: string
+          maxLength: 20
+        price:
+          $ref: '#/components/schemas/Money'
+        rooms:
+          type: integer
+          minimum: 0
+        areaM2:
+          type: number
+          format: float
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/ObjectStatus'
+
+    ObjectUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 10000
+        listingType:
+          $ref: '#/components/schemas/ListingType'
+        propertyType:
+          $ref: '#/components/schemas/PropertyType'
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        addressLine1:
+          type: string
+          maxLength: 200
+        postalCode:
+          type: string
+          maxLength: 20
+        price:
+          $ref: '#/components/schemas/Money'
+        rooms:
+          type: integer
+          minimum: 0
+        areaM2:
+          type: number
+          format: float
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/ObjectStatus'
+
+    ImageResource:
+      type: object
+      required: [id, objectId, url, sortOrder, createdAt]
+      properties:
+        id:
+          type: string
+          pattern: '^img_[A-Za-z0-9]{20,}$'
+        objectId:
+          type: string
+          pattern: '^obj_[A-Za-z0-9]{20,}$'
+        url:
+          type: string
+          format: uri
+        mimeType:
+          type: string
+          maxLength: 100
+        width:
+          type: integer
+          minimum: 1
+        height:
+          type: integer
+          minimum: 1
+        altText:
+          type: string
+          maxLength: 240
+        sortOrder:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        _links:
+          $ref: '#/components/schemas/ImageLinks'
+
+    ImageCreate:
+      type: object
+      required: [url]
+      additionalProperties: false
+      properties:
+        url:
+          type: string
+          format: uri
+        mimeType:
+          type: string
+          maxLength: 100
+        width:
+          type: integer
+          minimum: 1
+        height:
+          type: integer
+          minimum: 1
+        altText:
+          type: string
+          maxLength: 240
+        sortOrder:
+          type: integer
+          minimum: 0
+
+    ImageUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        altText:
+          type: string
+          maxLength: 240
+        sortOrder:
+          type: integer
+          minimum: 0
+
+    InquiryResource:
+      type: object
+      required: [id, objectId, customerName, customerEmail, message, status, createdAt]
+      properties:
+        id:
+          type: string
+          pattern: '^inq_[A-Za-z0-9]{20,}$'
+        objectId:
+          type: string
+          pattern: '^obj_[A-Za-z0-9]{20,}$'
+        customerName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        customerEmail:
+          type: string
+          format: email
+        customerPhone:
+          type: string
+          maxLength: 40
+        message:
+          type: string
+          minLength: 1
+          maxLength: 5000
+        status:
+          $ref: '#/components/schemas/InquiryStatus'
+        assignedTo:
+          type: string
+          maxLength: 120
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        _links:
+          $ref: '#/components/schemas/InquiryLinks'
+
+    InquiryCreate:
+      type: object
+      required: [customerName, customerEmail, message]
+      additionalProperties: false
+      properties:
+        customerName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        customerEmail:
+          type: string
+          format: email
+        customerPhone:
+          type: string
+          maxLength: 40
+        message:
+          type: string
+          minLength: 1
+          maxLength: 5000
+
+    InquiryUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          $ref: '#/components/schemas/InquiryStatus'
+        assignedTo:
+          type: string
+          maxLength: 120
+
+    ObjectCollection:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObjectResource'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+        _links:
+          $ref: '#/components/schemas/PaginationLinks'
+
+    ImageCollection:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageResource'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+        _links:
+          $ref: '#/components/schemas/PaginationLinks'
+
+    InquiryCollection:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/InquiryResource'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+        _links:
+          $ref: '#/components/schemas/PaginationLinks'
+
+    PaginationMeta:
+      type: object
+      required: [page, pageSize, totalItems, totalPages]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        totalItems:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+
+    PaginationLinks:
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/Link'
+        next:
+          oneOf:
+            - $ref: '#/components/schemas/Link'
+            - type: 'null'
+        prev:
+          oneOf:
+            - $ref: '#/components/schemas/Link'
+            - type: 'null'
+
+    ProblemDetails:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
