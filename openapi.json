@@ -1,0 +1,1176 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Real Estate Listings Management API",
+    "version": "1.0.0",
+    "summary": "RESTful API for managing real estate properties, images, and inquiries",
+    "description": "Resource-oriented API for a real estate project. Core resources are real-estate-properties, images, and inquiries."
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com/v1",
+      "description": "Production"
+    },
+    {
+      "url": "https://sandbox.api.example.com/v1",
+      "description": "Sandbox"
+    }
+  ],
+  "tags": [
+    {
+      "name": "RealEstateProperties",
+      "description": "Real estate property resources"
+    },
+    {
+      "name": "Images",
+      "description": "Images attached to a property"
+    },
+    {
+      "name": "Inquiries",
+      "description": "Inquiries related to a property"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/real-estate-properties": {
+      "get": {
+        "tags": ["RealEstateProperties"],
+        "operationId": "listRealEstateProperties",
+        "summary": "List real estate properties",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PageSize" },
+          { "$ref": "#/components/parameters/Sort" },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/RealEstatePropertyStatus" }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "schema": { "type": "string", "maxLength": 100 }
+          },
+          {
+            "name": "minPrice",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 0 }
+          },
+          {
+            "name": "maxPrice",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 0 }
+          },
+          {
+            "name": "rooms",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/RealEstatePropertyCollection"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "tags": ["RealEstateProperties"],
+        "operationId": "createRealEstateProperty",
+        "summary": "Create a real estate property",
+        "parameters": [
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RealEstatePropertyCreate" },
+              "examples": {
+                "sample": {
+                  "summary": "Create property example",
+                  "value": {
+                    "title": "3-room apartment in city center",
+                    "description": "Bright apartment near old town.",
+                    "listingType": "sale",
+                    "propertyType": "apartment",
+                    "city": "Tallinn",
+                    "addressLine1": "Example 12",
+                    "postalCode": "10111",
+                    "price": {
+                      "amount": 235000,
+                      "currency": "EUR"
+                    },
+                    "rooms": 3,
+                    "areaM2": 72.4,
+                    "status": "published"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/RealEstatePropertyCreated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/real-estate-properties/{propertyId}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/PropertyId" }
+      ],
+      "get": {
+        "tags": ["RealEstateProperties"],
+        "operationId": "getRealEstateProperty",
+        "summary": "Get a real estate property",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/RealEstateProperty"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["RealEstateProperties"],
+        "operationId": "updateRealEstateProperty",
+        "summary": "Partially update a real estate property",
+        "parameters": [
+          { "$ref": "#/components/parameters/IfMatch" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/merge-patch+json": {
+              "schema": { "$ref": "#/components/schemas/RealEstatePropertyUpdate" },
+              "examples": {
+                "statusChange": {
+                  "summary": "Update status",
+                  "value": { "status": "archived" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/RealEstatePropertyUpdated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["RealEstateProperties"],
+        "operationId": "deleteRealEstateProperty",
+        "summary": "Delete a real estate property",
+        "parameters": [
+          { "$ref": "#/components/parameters/IfMatch" }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          }
+        }
+      }
+    },
+    "/real-estate-properties/{propertyId}/images": {
+      "parameters": [
+        { "$ref": "#/components/parameters/PropertyId" }
+      ],
+      "get": {
+        "tags": ["Images"],
+        "operationId": "listPropertyImages",
+        "summary": "List property images",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ImageCollection"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Images"],
+        "operationId": "createPropertyImage",
+        "summary": "Create image metadata for a property",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ImageCreate" },
+              "examples": {
+                "sample": {
+                  "summary": "Create image metadata",
+                  "value": {
+                    "url": "https://cdn.example.com/images/prop_01.jpg",
+                    "mimeType": "image/jpeg",
+                    "width": 1600,
+                    "height": 1200,
+                    "altText": "Living room",
+                    "sortOrder": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/ImageCreated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/real-estate-properties/{propertyId}/images/{imageId}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/PropertyId" },
+        { "$ref": "#/components/parameters/ImageId" }
+      ],
+      "get": {
+        "tags": ["Images"],
+        "operationId": "getPropertyImage",
+        "summary": "Get image metadata",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Image"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Images"],
+        "operationId": "updatePropertyImage",
+        "summary": "Update image metadata",
+        "parameters": [
+          { "$ref": "#/components/parameters/IfMatch" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/merge-patch+json": {
+              "schema": { "$ref": "#/components/schemas/ImageUpdate" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/ImageUpdated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Images"],
+        "operationId": "deletePropertyImage",
+        "summary": "Delete image metadata",
+        "parameters": [
+          { "$ref": "#/components/parameters/IfMatch" }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          }
+        }
+      }
+    },
+    "/real-estate-properties/{propertyId}/inquiries": {
+      "parameters": [
+        { "$ref": "#/components/parameters/PropertyId" }
+      ],
+      "get": {
+        "tags": ["Inquiries"],
+        "operationId": "listPropertyInquiries",
+        "summary": "List property inquiries",
+        "parameters": [
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/PageSize" },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/InquiryStatus" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/InquiryCollection"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Inquiries"],
+        "operationId": "createPropertyInquiry",
+        "summary": "Create an inquiry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/InquiryCreate" },
+              "examples": {
+                "sample": {
+                  "summary": "Create inquiry example",
+                  "value": {
+                    "customerName": "Mari",
+                    "customerEmail": "mari@example.com",
+                    "customerPhone": "+37251234567",
+                    "message": "Is the apartment still available?"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/InquiryCreated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      }
+    },
+    "/real-estate-properties/{propertyId}/inquiries/{inquiryId}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/PropertyId" },
+        { "$ref": "#/components/parameters/InquiryId" }
+      ],
+      "get": {
+        "tags": ["Inquiries"],
+        "operationId": "getPropertyInquiry",
+        "summary": "Get inquiry",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Inquiry"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Inquiries"],
+        "operationId": "updatePropertyInquiry",
+        "summary": "Partially update inquiry",
+        "parameters": [
+          { "$ref": "#/components/parameters/IfMatch" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/merge-patch+json": {
+              "schema": { "$ref": "#/components/schemas/InquiryUpdate" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/InquiryUpdated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Inquiries"],
+        "operationId": "deletePropertyInquiry",
+        "summary": "Delete inquiry",
+        "parameters": [
+          { "$ref": "#/components/parameters/IfMatch" }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "parameters": {
+      "PropertyId": {
+        "name": "propertyId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^prop_[A-Za-z0-9]{20,}$"
+        }
+      },
+      "ImageId": {
+        "name": "imageId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^img_[A-Za-z0-9]{20,}$"
+        }
+      },
+      "InquiryId": {
+        "name": "inquiryId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^inq_[A-Za-z0-9]{20,}$"
+        }
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        }
+      },
+      "PageSize": {
+        "name": "pageSize",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        }
+      },
+      "Sort": {
+        "name": "sort",
+        "in": "query",
+        "description": "Comma-separated fields, prefix with '-' for descending.",
+        "schema": {
+          "type": "string"
+        },
+        "examples": {
+          "sample": {
+            "value": "-createdAt,price.amount"
+          }
+        }
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Required for state-changing operations to prevent lost updates."
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "description": "Optional idempotency key for safe retry of POST requests."
+      }
+    },
+    "responses": {
+      "RealEstatePropertyCollection": {
+        "description": "Paged collection of properties",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/RealEstatePropertyCollection" },
+            "examples": {
+              "sample": {
+                "value": {
+                  "data": [
+                    {
+                      "id": "prop_01J6R5R2P3Q9B6N12D5A1K3V9M",
+                      "title": "3-room apartment in city center",
+                      "description": "Bright apartment near old town.",
+                      "status": "published",
+                      "listingType": "sale",
+                      "propertyType": "apartment",
+                      "city": "Tallinn",
+                      "addressLine1": "Example 12",
+                      "postalCode": "10111",
+                      "price": {
+                        "amount": 235000,
+                        "currency": "EUR"
+                      },
+                      "rooms": 3,
+                      "areaM2": 72.4,
+                      "createdAt": "2026-04-20T10:11:12Z",
+                      "updatedAt": "2026-04-22T09:00:00Z",
+                      "_links": {
+                        "self": { "href": "/v1/real-estate-properties/prop_01J6R5R2P3Q9B6N12D5A1K3V9M" },
+                        "images": { "href": "/v1/real-estate-properties/prop_01J6R5R2P3Q9B6N12D5A1K3V9M/images" },
+                        "inquiries": { "href": "/v1/real-estate-properties/prop_01J6R5R2P3Q9B6N12D5A1K3V9M/inquiries" }
+                      }
+                    }
+                  ],
+                  "pagination": {
+                    "page": 1,
+                    "pageSize": 20,
+                    "totalItems": 1,
+                    "totalPages": 1
+                  },
+                  "_links": {
+                    "self": { "href": "/v1/real-estate-properties?page=1&pageSize=20" },
+                    "next": null,
+                    "prev": null
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "RealEstatePropertyCreated": {
+        "description": "Property created",
+        "headers": {
+          "Location": {
+            "schema": {
+              "type": "string",
+              "format": "uri-reference"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/RealEstatePropertyResource" }
+          }
+        }
+      },
+      "RealEstateProperty": {
+        "description": "Property resource",
+        "headers": {
+          "ETag": {
+            "schema": {
+              "type": "string"
+            }
+          },
+          "Cache-Control": {
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/RealEstatePropertyResource" }
+          }
+        }
+      },
+      "RealEstatePropertyUpdated": {
+        "description": "Updated property resource",
+        "headers": {
+          "ETag": {
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/RealEstatePropertyResource" }
+          }
+        }
+      },
+      "ImageCollection": {
+        "description": "Paged image collection",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ImageCollection" }
+          }
+        }
+      },
+      "ImageCreated": {
+        "description": "Image created",
+        "headers": {
+          "Location": {
+            "schema": {
+              "type": "string",
+              "format": "uri-reference"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ImageResource" }
+          }
+        }
+      },
+      "Image": {
+        "description": "Image resource",
+        "headers": {
+          "ETag": {
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ImageResource" }
+          }
+        }
+      },
+      "ImageUpdated": {
+        "description": "Updated image resource",
+        "headers": {
+          "ETag": {
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ImageResource" }
+          }
+        }
+      },
+      "InquiryCollection": {
+        "description": "Paged inquiry collection",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/InquiryCollection" }
+          }
+        }
+      },
+      "InquiryCreated": {
+        "description": "Inquiry created",
+        "headers": {
+          "Location": {
+            "schema": {
+              "type": "string",
+              "format": "uri-reference"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/InquiryResource" }
+          }
+        }
+      },
+      "Inquiry": {
+        "description": "Inquiry resource",
+        "headers": {
+          "ETag": {
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/InquiryResource" }
+          }
+        }
+      },
+      "InquiryUpdated": {
+        "description": "Updated inquiry resource",
+        "headers": {
+          "ETag": {
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/InquiryResource" }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Malformed request",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid authentication",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+          }
+        }
+      },
+      "PreconditionFailed": {
+        "description": "ETag mismatch",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+          }
+        }
+      },
+      "UnprocessableEntity": {
+        "description": "Semantic validation errors",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ValidationProblemDetails" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "RealEstatePropertyStatus": {
+        "type": "string",
+        "enum": ["draft", "published", "archived"]
+      },
+      "InquiryStatus": {
+        "type": "string",
+        "enum": ["new", "in_progress", "answered", "closed", "spam"]
+      },
+      "ListingType": {
+        "type": "string",
+        "enum": ["sale", "rent"]
+      },
+      "PropertyType": {
+        "type": "string",
+        "enum": ["apartment", "house", "land", "office", "retail", "warehouse", "other"]
+      },
+      "Money": {
+        "type": "object",
+        "required": ["amount", "currency"],
+        "properties": {
+          "amount": { "type": "integer", "minimum": 0 },
+          "currency": { "type": "string", "minLength": 3, "maxLength": 3, "pattern": "^[A-Z]{3}$" }
+        }
+      },
+      "Link": {
+        "type": "object",
+        "required": ["href"],
+        "properties": {
+          "href": { "type": "string", "format": "uri-reference" }
+        }
+      },
+      "RealEstatePropertyLinks": {
+        "type": "object",
+        "properties": {
+          "self": { "$ref": "#/components/schemas/Link" },
+          "images": { "$ref": "#/components/schemas/Link" },
+          "inquiries": { "$ref": "#/components/schemas/Link" }
+        }
+      },
+      "ImageLinks": {
+        "type": "object",
+        "properties": {
+          "self": { "$ref": "#/components/schemas/Link" },
+          "property": { "$ref": "#/components/schemas/Link" }
+        }
+      },
+      "InquiryLinks": {
+        "type": "object",
+        "properties": {
+          "self": { "$ref": "#/components/schemas/Link" },
+          "property": { "$ref": "#/components/schemas/Link" }
+        }
+      },
+      "RealEstatePropertyResource": {
+        "type": "object",
+        "required": ["id", "title", "status", "listingType", "propertyType", "city", "price", "createdAt", "updatedAt"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^prop_[A-Za-z0-9]{20,}$" },
+          "title": { "type": "string", "minLength": 3, "maxLength": 160 },
+          "description": { "type": "string", "maxLength": 10000 },
+          "status": { "$ref": "#/components/schemas/RealEstatePropertyStatus" },
+          "listingType": { "$ref": "#/components/schemas/ListingType" },
+          "propertyType": { "$ref": "#/components/schemas/PropertyType" },
+          "city": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "addressLine1": { "type": "string", "maxLength": 200 },
+          "postalCode": { "type": "string", "maxLength": 20 },
+          "price": { "$ref": "#/components/schemas/Money" },
+          "rooms": { "type": "integer", "minimum": 0 },
+          "areaM2": { "type": "number", "minimum": 0 },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "_links": { "$ref": "#/components/schemas/RealEstatePropertyLinks" }
+        },
+        "examples": [
+          {
+            "id": "prop_01J6R5R2P3Q9B6N12D5A1K3V9M",
+            "title": "3-room apartment in city center",
+            "description": "Bright apartment near old town.",
+            "status": "published",
+            "listingType": "sale",
+            "propertyType": "apartment",
+            "city": "Tallinn",
+            "addressLine1": "Example 12",
+            "postalCode": "10111",
+            "price": { "amount": 235000, "currency": "EUR" },
+            "rooms": 3,
+            "areaM2": 72.4,
+            "createdAt": "2026-04-20T10:11:12Z",
+            "updatedAt": "2026-04-22T09:00:00Z"
+          }
+        ]
+      },
+      "RealEstatePropertyCreate": {
+        "type": "object",
+        "required": ["title", "listingType", "propertyType", "city", "price"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 3, "maxLength": 160 },
+          "description": { "type": "string", "maxLength": 10000 },
+          "listingType": { "$ref": "#/components/schemas/ListingType" },
+          "propertyType": { "$ref": "#/components/schemas/PropertyType" },
+          "city": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "addressLine1": { "type": "string", "maxLength": 200 },
+          "postalCode": { "type": "string", "maxLength": 20 },
+          "price": { "$ref": "#/components/schemas/Money" },
+          "rooms": { "type": "integer", "minimum": 0 },
+          "areaM2": { "type": "number", "minimum": 0 },
+          "status": { "$ref": "#/components/schemas/RealEstatePropertyStatus" }
+        },
+        "examples": [
+          {
+            "title": "3-room apartment in city center",
+            "listingType": "sale",
+            "propertyType": "apartment",
+            "city": "Tallinn",
+            "price": { "amount": 235000, "currency": "EUR" }
+          }
+        ]
+      },
+      "RealEstatePropertyUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 3, "maxLength": 160 },
+          "description": { "type": "string", "maxLength": 10000 },
+          "listingType": { "$ref": "#/components/schemas/ListingType" },
+          "propertyType": { "$ref": "#/components/schemas/PropertyType" },
+          "city": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "addressLine1": { "type": "string", "maxLength": 200 },
+          "postalCode": { "type": "string", "maxLength": 20 },
+          "price": { "$ref": "#/components/schemas/Money" },
+          "rooms": { "type": "integer", "minimum": 0 },
+          "areaM2": { "type": "number", "minimum": 0 },
+          "status": { "$ref": "#/components/schemas/RealEstatePropertyStatus" }
+        }
+      },
+      "ImageResource": {
+        "type": "object",
+        "required": ["id", "propertyId", "url", "sortOrder", "createdAt"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^img_[A-Za-z0-9]{20,}$" },
+          "propertyId": { "type": "string", "pattern": "^prop_[A-Za-z0-9]{20,}$" },
+          "url": { "type": "string", "format": "uri" },
+          "mimeType": { "type": "string", "maxLength": 100 },
+          "width": { "type": "integer", "minimum": 1 },
+          "height": { "type": "integer", "minimum": 1 },
+          "altText": { "type": "string", "maxLength": 240 },
+          "sortOrder": { "type": "integer", "minimum": 0 },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "_links": { "$ref": "#/components/schemas/ImageLinks" }
+        },
+        "examples": [
+          {
+            "id": "img_01J6R5R2P3Q9B6N12D5A1K3V9M",
+            "propertyId": "prop_01J6R5R2P3Q9B6N12D5A1K3V9M",
+            "url": "https://cdn.example.com/images/prop_01.jpg",
+            "mimeType": "image/jpeg",
+            "width": 1600,
+            "height": 1200,
+            "altText": "Living room",
+            "sortOrder": 1,
+            "createdAt": "2026-04-20T10:11:12Z"
+          }
+        ]
+      },
+      "ImageCreate": {
+        "type": "object",
+        "required": ["url"],
+        "additionalProperties": false,
+        "properties": {
+          "url": { "type": "string", "format": "uri" },
+          "mimeType": { "type": "string", "maxLength": 100 },
+          "width": { "type": "integer", "minimum": 1 },
+          "height": { "type": "integer", "minimum": 1 },
+          "altText": { "type": "string", "maxLength": 240 },
+          "sortOrder": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "ImageUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "altText": { "type": "string", "maxLength": 240 },
+          "sortOrder": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "InquiryResource": {
+        "type": "object",
+        "required": ["id", "propertyId", "customerName", "customerEmail", "message", "status", "createdAt"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^inq_[A-Za-z0-9]{20,}$" },
+          "propertyId": { "type": "string", "pattern": "^prop_[A-Za-z0-9]{20,}$" },
+          "customerName": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "customerEmail": { "type": "string", "format": "email" },
+          "customerPhone": { "type": "string", "maxLength": 40 },
+          "message": { "type": "string", "minLength": 1, "maxLength": 5000 },
+          "status": { "$ref": "#/components/schemas/InquiryStatus" },
+          "assignedTo": { "type": "string", "maxLength": 120 },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "_links": { "$ref": "#/components/schemas/InquiryLinks" }
+        },
+        "examples": [
+          {
+            "id": "inq_01J6R5R2P3Q9B6N12D5A1K3V9M",
+            "propertyId": "prop_01J6R5R2P3Q9B6N12D5A1K3V9M",
+            "customerName": "Mari",
+            "customerEmail": "mari@example.com",
+            "customerPhone": "+37251234567",
+            "message": "Is the apartment still available?",
+            "status": "new",
+            "createdAt": "2026-04-23T10:11:12Z"
+          }
+        ]
+      },
+      "InquiryCreate": {
+        "type": "object",
+        "required": ["customerName", "customerEmail", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "customerName": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "customerEmail": { "type": "string", "format": "email" },
+          "customerPhone": { "type": "string", "maxLength": 40 },
+          "message": { "type": "string", "minLength": 1, "maxLength": 5000 }
+        }
+      },
+      "InquiryUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": { "$ref": "#/components/schemas/InquiryStatus" },
+          "assignedTo": { "type": "string", "maxLength": 120 }
+        }
+      },
+      "RealEstatePropertyCollection": {
+        "type": "object",
+        "required": ["data", "pagination"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RealEstatePropertyResource" }
+          },
+          "pagination": { "$ref": "#/components/schemas/PaginationMeta" },
+          "_links": { "$ref": "#/components/schemas/PaginationLinks" }
+        }
+      },
+      "ImageCollection": {
+        "type": "object",
+        "required": ["data", "pagination"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ImageResource" }
+          },
+          "pagination": { "$ref": "#/components/schemas/PaginationMeta" },
+          "_links": { "$ref": "#/components/schemas/PaginationLinks" }
+        }
+      },
+      "InquiryCollection": {
+        "type": "object",
+        "required": ["data", "pagination"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/InquiryResource" }
+          },
+          "pagination": { "$ref": "#/components/schemas/PaginationMeta" },
+          "_links": { "$ref": "#/components/schemas/PaginationLinks" }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "required": ["page", "pageSize", "totalItems", "totalPages"],
+        "properties": {
+          "page": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "minimum": 1 },
+          "totalItems": { "type": "integer", "minimum": 0 },
+          "totalPages": { "type": "integer", "minimum": 0 }
+        }
+      },
+      "PaginationLinks": {
+        "type": "object",
+        "properties": {
+          "self": { "$ref": "#/components/schemas/Link" },
+          "next": { "oneOf": [ { "$ref": "#/components/schemas/Link" }, { "type": "null" } ] },
+          "prev": { "oneOf": [ { "$ref": "#/components/schemas/Link" }, { "type": "null" } ] }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "required": ["type", "title", "status"],
+        "properties": {
+          "type": { "type": "string", "format": "uri-reference" },
+          "title": { "type": "string" },
+          "status": { "type": "integer" },
+          "detail": { "type": "string" },
+          "instance": { "type": "string", "format": "uri-reference" }
+        }
+      },
+      "ValidationProblemDetails": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ProblemDetails" },
+          {
+            "type": "object",
+            "properties": {
+              "errors": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
